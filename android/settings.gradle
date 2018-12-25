@@ -1,0 +1,3 @@
+rootProject.name = 'urbanice_interview'
+
+include ':app'
