@@ -1,11 +1,3 @@
-/**
- * Sample React Native App
- * https://github.com/facebook/react-native
- *
- * @format
- * @flow
- */
-
 import React, { Component, Fragment } from "react";
 import {
   Dimensions,
@@ -16,10 +8,12 @@ import {
   TouchableOpacity
 } from "react-native";
 import Picker from "react-native-picker-select";
+
+import HistoryModal from "./components/HistoryModal";
 import {
-  sequentialFinding,
-  findingStatiNumber,
-  attachString
+  solveEquation,
+  storageUpdateHistory,
+  storageGetHistory
 } from "./utilities/Utilities";
 
 /* Static Initialization */
@@ -40,29 +34,28 @@ export default class App extends Component<Props> {
   state = {
     question: null,
     value: "",
-    answer: null
+    answer: null,
+    history: null
   };
-  solveEquation = (question, value) => {
-    switch (Number(question)) {
-      case 1:
-        return sequentialFinding(value);
-      case 2:
-        return findingStatiNumber();
-      case 3:
-        return attachString(value);
-      default:
-        return 0;
-    }
+  componentDidMount() {
+    this.onFetchHistory();
+  }
+  onFetchHistory = async () => {
+    const history = await storageGetHistory();
+    this.setState({ history });
   };
-  onSolveEquation = () => {
+  onSolveEquation = async () => {
     const { question, value } = this.state;
     if (isNaN(value)) {
       alert("Your input is not a number!");
       this.setState({ value: 0 });
       return;
     }
-    const result = this.solveEquation(question, value);
-    this.setState({ answer: result });
+    const result = solveEquation(question, value);
+    const history = await storageUpdateHistory(
+      `Question ${question} checking position ${value} and answer is ${result}`
+    );
+    this.setState({ answer: result, history });
   };
 
   onChangeValue = value => {
@@ -71,8 +64,15 @@ export default class App extends Component<Props> {
   onChangeQuestion = question => {
     this.setState({ question, value: "", answer: null });
   };
+  onShowHistory = async () => {
+    await this.onFetchHistory();
+    this.setState({ isShowModal: true });
+  };
+  onCloseModal = () => {
+    this.setState({ isShowModal: false });
+  };
   render() {
-    const { question, value, answer } = this.state;
+    const { question, value, answer, history, isShowModal } = this.state;
     const instruction = instructions[question - 1];
     const explanation = explanations[question - 1];
     const questions = [
@@ -83,6 +83,12 @@ export default class App extends Component<Props> {
     return (
       <View style={styles.container}>
         <Text style={styles.welcome}>Welcome to the Demo!</Text>
+        <View>
+          <TouchableOpacity style={styles.button} onPress={this.onShowHistory}>
+            <Text style={styles.buttonText}>View history</Text>
+          </TouchableOpacity>
+        </View>
+        <View style={styles.divider} />
         <View style={styles.pickerContainer}>
           <Picker
             placeholder={{
@@ -108,6 +114,7 @@ export default class App extends Component<Props> {
                   Want to find other position ?
                 </Text>
                 <TextInput
+                  type={"number"}
                   placeholder={"Please input your position to find the number."}
                   style={styles.input}
                   onChangeText={this.onChangeValue}
@@ -131,6 +138,9 @@ export default class App extends Component<Props> {
           <Text style={styles.questions}>
             Answer for position {value} is {answer}
           </Text>
+        ) : null}
+        {isShowModal ? (
+          <HistoryModal histories={history} onCloseModal={this.onCloseModal} />
         ) : null}
       </View>
     );
